@@ -5,6 +5,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class WeatherApp extends JFrame {
     private JLabel locationLabel;
@@ -13,11 +17,29 @@ public class WeatherApp extends JFrame {
     private JTextField temperatureField;
     private JButton getWeatherButton;
 
+    private Connection connection;
+    private String databaseUrl = "jdbc:mysql://localhost:3306/weather_db";
+    private String username = "root";
+    private String password = "";
+
     public WeatherApp() {
+        connectToDatabase();
         initializeUI();
         setupListeners();
     }
 
+    private void connectToDatabase() {
+        try {
+            connection = DriverManager.getConnection(databaseUrl, username, password);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(
+                    WeatherApp.this,
+                    "Error connecting to the database: " + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
     private void initializeUI() {
         setTitle("Weather App");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -53,6 +75,7 @@ public class WeatherApp extends JFrame {
                 try {
                     String temperature = getTemperature(location);
                     temperatureField.setText(temperature);
+                    saveWeatherData(location, Double.parseDouble(temperature.split(" ")[0]));
                 } catch (IOException ex) {
                     JOptionPane.showMessageDialog(
                             WeatherApp.this,
@@ -105,6 +128,21 @@ public class WeatherApp extends JFrame {
         }
     }
 
+    private void saveWeatherData(String location, double temperature) {
+        String insertQuery = "INSERT INTO weather_data (location, temperature) VALUES " +
+                "('" + location + "', " + temperature + ")";
+
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(insertQuery);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(
+                    WeatherApp.this,
+                    "Error saving weather data: " + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
